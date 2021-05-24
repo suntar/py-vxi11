@@ -1,0 +1,238 @@
+#!/usr/bin/python
+
+import vxi11
+import sys
+import getopt
+import time
+
+
+gpib_n = ''
+ip_a=''
+dev_u=''
+testmode = False
+devtype_set_by_user=['capbr']
+
+argv=sys.argv[1:]
+usagetxt="usage: gpib2eth_vxi11 -n <gpib number> -a <ip> [-t]\n\
+    -n,--gpib-num <gpib number>  -- gpib number of the device\n\
+    -a,--ip-address <ip>         -- ip address of gpib2eth converter\n\
+    -t                           -- test mode\n\
+    -d,--device <type>           -- one of: capbr (needed for devices that can't be recognized automatically)"
+try:
+    opts, args = getopt.getopt(argv,"htn:a:d:",["gpib-num=","ip-address=","device=","test"])
+except getopt.GetoptError:
+    print usagetxt,"; error"
+    sys.exit(2)
+for opt, arg in opts:
+    if opt == '-h':
+      print usagetxt
+      sys.exit()
+    elif opt in ("-n", "--gpib-num"):
+      gpib_n = arg
+    elif opt in ("-a", "--ip-address"):
+      ip_a = arg
+    elif opt in ("-d", "--device"):
+      if arg in devtype_set_by_user:
+        dev_u = arg
+      else:
+        print "#Error: illegal type of the device: "+ arg
+        print usagetxt
+        quit()
+    elif opt in ("-t", "--test"):
+      testmode = True
+
+if gpib_n == '' or ip_a == '':
+  print usagetxt
+  quit()
+
+dev_conn="gpib0,"+gpib_n
+
+instr =  vxi11.Instrument(ip_a,dev_conn)
+instr.timeout = 10
+
+print("#SPP001")
+print(dev_conn + " device is opened. Type help to see command list.")
+print("#OK")
+
+idn=''
+if not testmode and not dev_u in devtype_set_by_user:
+  c="*IDN?"
+  idn=instr.ask(c)
+  time.sleep(0.05)
+
+
+cmdlist_SR830=[
+[
+"*IDN?",
+"SENS?",
+"OFLT?",
+"SNAP?1,2",
+"SNAP?3,4",
+"SNAP?9,1,2",
+"SNAP?9,3,4",  # Return space-separated values depending on channel setting
+"ISRC?",
+"AUXO?1",  # read auxilary input
+"AUXO?2",  # read auxilary input
+"LIAS?",
+],
+[
+"AGAN",    # autorange
+"SENS 0",
+"SENS 1",
+"SENS 2",
+"SENS 3",
+"SENS 4",
+"SENS 5",
+"SENS 6",
+"SENS 7",
+"SENS 8",
+"SENS 9",
+"SENS 10",
+"SENS 11",
+"SENS 12",
+"SENS 13",
+"SENS 14",
+"SENS 15",
+"SENS 16",
+"SENS 17",
+"SENS 18",
+"SENS 19",
+"SENS 20",
+"SENS 21",
+"SENS 22",
+"SENS 23",
+"SENS 24",
+"SENS 25",
+"SENS 26",
+"OFLT 0",
+"OFLT 1",
+"OFLT 2",
+"OFLT 3",
+"OFLT 4",
+"OFLT 5",
+"OFLT 6",
+"OFLT 7",
+"OFLT 8",
+"OFLT 9",
+"OFLT 10",
+"OFLT 11",
+"OFLT 12",
+"OFLT 13",
+"OFLT 14",
+"OFLT 15",
+"OFLT 16",
+"OFLT 17",
+"OFLT 18",
+"OFLT 19",
+]]
+
+
+cmdlist_SR844=[
+[
+"*IDN?",
+"SENS?",
+"OFLT?",
+"SNAP?1,2",
+"SNAP?3,5",
+"SNAP?8,1,2",
+"SNAP?8,3,5",  # Return space-separated values depending on channel setting
+"AUXO?1",  # read auxilary input
+"AUXO?2",  # read auxilary input
+"LIAS?",
+],[
+"AGAN",    # autorange
+"SENS 0",
+"SENS 1",
+"SENS 2",
+"SENS 3",
+"SENS 4",
+"SENS 5",
+"SENS 6",
+"SENS 7",
+"SENS 8",
+"SENS 9",
+"SENS 10",
+"SENS 11",
+"SENS 12",
+"SENS 13",
+"SENS 14",
+"OFLT 0",
+"OFLT 1",
+"OFLT 2",
+"OFLT 3",
+"OFLT 4",
+"OFLT 5",
+"OFLT 6",
+"OFLT 7",
+"OFLT 8",
+"OFLT 9",
+"OFLT 10",
+"OFLT 11",
+"OFLT 12",
+"OFLT 13",
+"OFLT 14",
+"OFLT 15",
+"OFLT 16",
+"OFLT 17",
+]]
+
+
+cmdlist_capbr=[
+[
+"SH AL",
+"SHOW BUS",
+"SINGLE",
+"Q",
+],
+[]]
+
+
+cmdlist=[]
+dev=''
+if testmode:
+  print "# test mode"
+else:
+  if 'SR830' in idn:
+    cmdlist = cmdlist_SR830
+  elif 'SR844' in idn:
+    cmdlist = cmdlist_SR844
+  elif dev_u == 'capbr':
+    cmdlist = cmdlist_capbr
+  else:
+    print "#Error: unknown type of the device: "+idn+"; try test mode with -t option"
+    quit()
+
+
+def is_cmd_a(cmd):
+  if cmd in cmdlist[0]: return True
+  return False
+
+def is_cmd_w(cmd):
+  if cmd in cmdlist[1]: return True
+  return False
+
+while True:
+    try:
+      cmd=raw_input("").rstrip()
+      cmd_u=cmd.upper()
+      if 'help' in cmd:
+        print("no help available")
+        print "#OK"
+      elif cmd_u == '*IDN?' and dev_u == 'capbr':
+        print 'capacitance bridge'
+        print "#OK"
+      elif testmode:
+        print(instr.ask(cmd_u))
+        print "#OK"
+      elif is_cmd_a(cmd_u):
+        print(instr.ask(cmd_u))
+        print "#OK"
+      elif is_cmd_w(cmd_u):
+        instr.write(cmd_u)
+        time.sleep(0.05)
+        print "#OK"
+      else:
+        print "#Error: Unknown command:", cmd
+    except EOFError:
+      break
+
