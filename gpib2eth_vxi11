@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 import vxi11
 import sys
@@ -13,20 +13,23 @@ testmode = False
 devtype_set_by_user=['capbr']
 
 argv=sys.argv[1:]
-usagetxt="usage: gpib2eth_vxi11 -n <gpib number> -a <ip> [-t]\n\
+usagetxt="usage: gpib2eth_vxi11 -n <gpib number> -a <ip> [-t] [-d <type>]\n\
     -n,--gpib-num <gpib number>  -- gpib number of the device\n\
     -a,--ip-address <ip>         -- ip address of gpib2eth converter\n\
     -t                           -- test mode\n\
-    -d,--device <type>           -- one of: capbr (needed for devices that can't be recognized automatically)"
+    -d,--device <type>           -- one of: capbr (use to identify devices which don't support *idn? command)"
 try:
     opts, args = getopt.getopt(argv,"htn:a:d:",["gpib-num=","ip-address=","device=","test"])
 except getopt.GetoptError:
-    print usagetxt,"; error"
+    print "#Error: unknown option"
+    print usagetxt
+    sys.stdout.flush()
     sys.exit(2)
 for opt, arg in opts:
     if opt == '-h':
       print usagetxt
-      sys.exit()
+      sys.stdout.flush()
+      sys.exit(0)
     elif opt in ("-n", "--gpib-num"):
       gpib_n = arg
     elif opt in ("-a", "--ip-address"):
@@ -37,13 +40,15 @@ for opt, arg in opts:
       else:
         print "#Error: illegal type of the device: "+ arg
         print usagetxt
-        quit()
+        sys.stdout.flush()
+        sys.exit(2)
     elif opt in ("-t", "--test"):
       testmode = True
 
 if gpib_n == '' or ip_a == '':
   print usagetxt
-  quit()
+  sys.stdout.flush()
+  sys.exit(2)
 
 dev_conn="gpib0,"+gpib_n
 
@@ -53,13 +58,14 @@ instr.timeout = 10
 print("#SPP001")
 print(dev_conn + " device is opened. Type help to see command list.")
 print("#OK")
+sys.stdout.flush()
 
 idn=''
 if not testmode and not dev_u in devtype_set_by_user:
   c="*IDN?"
   idn=instr.ask(c)
-  time.sleep(0.05)
-
+#  time.sleep(0.01)
+#  sys.stdout.flush()
 
 cmdlist_SR830=[
 [
@@ -200,6 +206,7 @@ else:
     cmdlist = cmdlist_capbr
   else:
     print "#Error: unknown type of the device: "+idn+"; try test mode with -t option"
+    sys.stdout.flush()
     quit()
 
 
@@ -218,21 +225,21 @@ while True:
       if 'help' in cmd:
         print("no help available")
         print "#OK"
+      elif cmd_u == '':
+        continue
       elif cmd_u == '*IDN?' and dev_u == 'capbr':
         print 'capacitance bridge'
         print "#OK"
-      elif testmode:
-        print(instr.ask(cmd_u))
-        print "#OK"
-      elif is_cmd_a(cmd_u):
+      elif testmode or is_cmd_a(cmd_u):
         print(instr.ask(cmd_u))
         print "#OK"
       elif is_cmd_w(cmd_u):
         instr.write(cmd_u)
-        time.sleep(0.05)
+        time.sleep(0.01)
         print "#OK"
       else:
         print "#Error: Unknown command:", cmd
     except EOFError:
       break
+    sys.stdout.flush()
 
