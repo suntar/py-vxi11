@@ -5,6 +5,17 @@ import sys
 import getopt
 import time
 
+def clr_instr():
+    t=instr.timeout
+    instr.timeout=0.3
+    while True:
+      try:
+        instr.ask("REST")
+      except:
+        break
+    instr.timeout=t
+
+
 gpib_n = ''
 ip_a   = ''
 dev_u  = ''
@@ -60,7 +71,7 @@ instr.timeout = 10
 print("#SPP001")
 print(dev_conn + " device is opened. Type help to see command list.")
 if dev_clr:
-   instr.ask("REST")
+   clr_instr()
 print("#OK")
 sys.stdout.flush()
 
