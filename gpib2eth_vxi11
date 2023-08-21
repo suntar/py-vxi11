@@ -5,10 +5,10 @@ import sys
 import getopt
 import time
 
-
 gpib_n = ''
-ip_a=''
-dev_u=''
+ip_a   = ''
+dev_u  = ''
+dev_clr  = False
 testmode = False
 devtype_set_by_user=['capbr']
 
@@ -19,7 +19,7 @@ usagetxt="usage: gpib2eth_vxi11 -n <gpib number> -a <ip> [-t] [-d <type>]\n\
     -t                           -- test mode\n\
     -d,--device <type>           -- one of: capbr (use to identify devices which don't support *idn? command)"
 try:
-    opts, args = getopt.getopt(argv,"htn:a:d:",["gpib-num=","ip-address=","device=","test"])
+    opts, args = getopt.getopt(argv,"htn:a:d:c",["gpib-num=","ip-address=","device=","test","clr"])
 except getopt.GetoptError:
     print "#Error: unknown option"
     print usagetxt
@@ -32,6 +32,8 @@ for opt, arg in opts:
       sys.exit(0)
     elif opt in ("-n", "--gpib-num"):
       gpib_n = arg
+    elif opt in ("-c", "--clr"):
+      dev_clr = True
     elif opt in ("-a", "--ip-address"):
       ip_a = arg
     elif opt in ("-d", "--device"):
@@ -57,6 +59,8 @@ instr.timeout = 10
 
 print("#SPP001")
 print(dev_conn + " device is opened. Type help to see command list.")
+if dev_clr:
+  instr.ask("REST")
 print("#OK")
 sys.stdout.flush()
 
@@ -71,6 +75,7 @@ cmdlist_SR830=[
 [
 "*IDN?",
 "SENS?",
+"FREQ?",
 "OFLT?",
 "SNAP?1,2",
 "SNAP?3,4",
@@ -83,6 +88,7 @@ cmdlist_SR830=[
 ],
 [
 "AGAN",    # autorange
+"REST",
 "SENS 0",
 "SENS 1",
 "SENS 2",
@@ -137,6 +143,7 @@ cmdlist_SR844=[
 [
 "*IDN?",
 "SENS?",
+"FREQ?",
 "OFLT?",
 "SNAP?1,2",
 "SNAP?3,5",
@@ -147,6 +154,7 @@ cmdlist_SR844=[
 "LIAS?",
 ],[
 "AGAN",    # autorange
+"REST",
 "SENS 0",
 "SENS 1",
 "SENS 2",
@@ -210,6 +218,7 @@ else:
     quit()
 
 
+
 def is_cmd_a(cmd):
   if cmd in cmdlist[0]: return True
   return False
@@ -217,6 +226,9 @@ def is_cmd_a(cmd):
 def is_cmd_w(cmd):
   if cmd in cmdlist[1]: return True
   return False
+
+
+
 
 while True:
     try:
